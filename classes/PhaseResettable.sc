@@ -21,22 +21,57 @@
 PhaseResettable {	
 	var <>clock;
 	var <>period, <>d, <>s, <>t;
-	var <>period_buffer;
-	var <>refractory;
+	var <>period_buffer, <>refractory;
+	var <>voice, <>voice_buffer;
+	var <>server;
+	
+	//----------
+	// init
+	//----------	
 	
 	*new { arg options = IdentityDictionary.new;
 		^super.new.init(options) 
 	}
 
 	init { arg options = IdentityDictionary.new;
-		s 		= options.at('prc');
-		period 	= options.at('period');
 		t = 0.1;
-		// creation of the internal clock
-		clock 	= TempoClock(period);
+		s = options.at('prc');
+		period = options.at('period');
+		clock  = TempoClock(period);
+		server = Server.local; // eventually fed in.
+		
+		// create the voice and send it to the server
+		SynthDef("voice-buffer", { arg out = 0, bufnum;
+			Out.ar(out, 
+				PlayBuf.ar(1, bufnum, BufRateScale.kr(bufnum))
+			)
+		}).send(server);
 	}
 	
+	//----------
+	// vocalize
+	//----------	
+		
+	vocalize {
+		var x, y, b;
+		y = Synth.basicNew("voice-buffer");
+		b = Buffer.readNoUpdate(server,"sounds/peeper.wav", 
+			completionMessage: { arg buffer;
+				// synth add its s_new msg to follow 
+				// after the buffer read completes
+				y.newMsg(server,[\bufnum, buffer],\addToTail)
+			});
+		
+		//voice_buffer = Buffer.read(server, 'sounds/peeper.wav');
+		//server.sendMsg("/s_new", "voice-buffer", x = server.nextNodeID, 1, 1, "freq", 800);
+	}
+	
+	//----------
+	// trigger
+	//----------
+	
 	trigger { |beat, seconds|
+		this.vocalize;
 		[clock.beatDur, beat, seconds].postln;
 		if( period_buffer.isNil, {
 			this.set_tempo_in_seconds(period);
@@ -48,6 +83,10 @@ PhaseResettable {
 		
 	}
 	
+	//----------
+	// stimulate
+	//----------
+	
 	stimulate {
 		var new_period, period_elapsed;
 		
@@ -56,7 +95,7 @@ PhaseResettable {
 		d = period_elapsed;
 		
 		if( d > (this.current_period - t), {
-			new_period = s * (d - this.current_period) + period;
+			new_period = (s * (d - this.current_period)) + period;
 			// Save it for next beat
 			period_buffer = new_period;
 		},{
@@ -65,6 +104,10 @@ PhaseResettable {
 			this.set_tempo_in_seconds(new_period);
 		});
 	}
+	
+	//----------
+	// play
+	//----------	
 	
 	play {
 		var start_time;
@@ -78,9 +121,17 @@ PhaseResettable {
 		});
 	}
 	
+	//----------
+	// stop
+	//----------	
+		
 	stop {
 		clock.clear
 	}
+	
+	//----------
+	// utility
+	//----------	
 	
 	// Convert seconds/beat to beats/second and
 	// set the new tempo (beats/second)
