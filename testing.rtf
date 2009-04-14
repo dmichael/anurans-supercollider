@@ -17,12 +17,12 @@
 	t.schedAbs(0, x);\
 )\
 \
-(\
-p = \cf2 PhaseResettable\cf0 .new(\cf4 'name'\cf0  -> \cf4 'johnny5'\cf0 )\
-z = \cf2 PhaseResettable\cf0 .new(\cf4 'name'\cf0  -> \cf4 'johnny5'\cf0 )\
-p.play\
-p.stop\
-p.clock.clear\
 \
-z.play\
-)}
+(\
+	p = \cf2 PhaseResettable\cf0 .new((\cf4 period:1, prc:0.9)\cf0 );\
+	p.play;\
+)\
+\
+\
+p.stimulate\
+}
