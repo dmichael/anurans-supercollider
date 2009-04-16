@@ -27,7 +27,7 @@ PhaseResettable {
 	
 	//----------
 	// init
-	//----------	
+	//----------
 	
 	*new { arg options = IdentityDictionary.new;
 		^super.new.init(options) 
@@ -41,30 +41,27 @@ PhaseResettable {
 		server = Server.local; // eventually fed in.
 		
 		// create the voice and send it to the server
-		SynthDef("voice-buffer", { arg out = 0, bufnum;
-			Out.ar(out, 
-				PlayBuf.ar(1, bufnum, BufRateScale.kr(bufnum))
-			)
-		}).send(server);
+    voice = SynthDef("voice-buffer", { arg bus = 0, bufnum = 0, rateScale = 1;
+      Out.ar(bus, 
+        PlayBufFree.ar(1, bufnum, BufRateScale.kr(bufnum) * rateScale) * EnvGen.kr(Env.sine(BufDur.kr(bufnum)))
+      )
+    }).load(server);
+
+    voice_buffer = Buffer.read(server, "sounds/peeper.wav");
+    
+    //voice = {PlayBuf.ar(1, voice_buffer.bufnum, BufRateScale.kr(voice_buffer.bufnum) * 1)};//Synth("voice-buffer", [\bus, 0, \bufNum, voice_buffer, \trigger, 1]);      
 	}
 	
 	//----------
 	// vocalize
-	//----------	
+	//----------
 		
 	vocalize {
-		var x, y, b;
-		y = Synth.basicNew("voice-buffer");
-		b = Buffer.readNoUpdate(server,"sounds/peeper.wav", 
-			completionMessage: { arg buffer;
-				// synth add its s_new msg to follow 
-				// after the buffer read completes
-				y.newMsg(server,[\bufnum, buffer],\addToTail)
-			});
-		
-		//voice_buffer = Buffer.read(server, 'sounds/peeper.wav');
-		//server.sendMsg("/s_new", "voice-buffer", x = server.nextNodeID, 1, 1, "freq", 800);
-	}
+    voice = Synth("voice-buffer", [\bus, 0, \bufNum, voice_buffer]);      	  
+    voice.play;
+
+    "vocalize".postln;
+  }
 	
 	//----------
 	// trigger
